@@ -1,21 +1,21 @@
 package xyz.thepathfinder.simulator;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import xyz.thepathfinder.android.Action;
-import xyz.thepathfinder.android.Route;
-import xyz.thepathfinder.android.Transport;
-import xyz.thepathfinder.android.TransportListener;
+import xyz.thepathfinder.android.*;
 import xyz.thepathfinder.gmaps.Coordinate;
 import xyz.thepathfinder.gmaps.Directions;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static xyz.thepathfinder.gmaps.Coordinate.distance;
 import static xyz.thepathfinder.gmaps.Coordinate.moveTowards;
@@ -60,8 +60,7 @@ class SimulatedTransport extends TransportListener {
 
     Coordinate next() throws IOException {
         move(DELTA);
-        // TODO: Notify Pathfinder of location. Currently blocked by Pathfinder connection failing.
-        // if (transport == null) notifyPathfinder();
+        if (transport == null) notifyPathfinder();
         return this.current;
     }
 
@@ -108,6 +107,11 @@ class SimulatedTransport extends TransportListener {
         } else {
             if (distance(current, coordinate(actions.get(0))) < EPSILON) {
                 // TODO: Update Pathfinder somehow? The SDK does not seem to support this?
+                Action a = actions.get(0);
+                Commodity commodity = (Commodity) a.getModel();
+                Map<ActionStatus, CommodityStatus> statusMap =
+                        ImmutableMap.of(ActionStatus.PICK_UP, CommodityStatus.PICKED_UP, ActionStatus.DROP_OFF, CommodityStatus.DROPPED_OFF);
+                commodity.updateStatus(statusMap.get(a.getStatus()));
                 actions.remove(0);
                 if (actions.isEmpty()) {                    // Completed all Pathfinder actions, returning to loop.
                     actionPath = getDirections(current, start()).coordinates();
@@ -134,7 +138,7 @@ class SimulatedTransport extends TransportListener {
     @Override
     public void routed(Route route) {
         log.info(String.format("Received new route: {}", route));
-        actions = route.getActions();
+        actions = route.getActions().subList(1, route.getActions().size());
         try {
             actionPath = getDirections(current, coordinate(actions.get(0))).coordinates();
         } catch (IOException e) {
