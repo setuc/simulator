@@ -1,10 +1,8 @@
 package xyz.thepathfinder.simulator;
 
-import com.google.gson.JsonObject;
 import com.lynden.gmapsfx.GoogleMapView;
 import com.lynden.gmapsfx.MapComponentInitializedListener;
 import com.lynden.gmapsfx.javascript.object.*;
-import com.squareup.okhttp.OkHttpClient;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -14,15 +12,12 @@ import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import xyz.thepathfinder.android.*;
+import xyz.thepathfinder.android.Pathfinder;
 import xyz.thepathfinder.gmaps.Coordinate;
-import xyz.thepathfinder.gmaps.Directions;
 
 import java.util.Arrays;
-import java.util.List;
 
 public class SimulatorMap extends Application implements MapComponentInitializedListener {
     private static final Logger log = LoggerFactory.getLogger(SimulatorMap.class);
@@ -44,12 +39,6 @@ public class SimulatorMap extends Application implements MapComponentInitialized
         stage.setTitle("Google Maps");
         stage.setScene(scene);
         stage.show();
-        /*Directions d1 = sim.getDirections(a, b);
-        Directions d2 = sim.getDirections(b, c);
-        Directions d3 = sim.getDirections(c, a);
-        List<Coordinate> path = d1.routes.get(0).overviewPolyline.coordinates();
-        path.addAll(d2.routes.get(0).overviewPolyline.coordinates());
-        path.addAll(d3.routes.get(0).overviewPolyline.coordinates());*/
         simulatedTransport = SimulatedTransport.create(Arrays.asList(a, b, c));
         /*
         pf = new Pathfinder("9869bd06-12ec-451f-8207-2c5f217eb4d0", "abc");
