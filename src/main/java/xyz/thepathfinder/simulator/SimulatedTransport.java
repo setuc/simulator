@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
+import com.squareup.okhttp.ResponseBody;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import xyz.thepathfinder.android.Action;
@@ -43,6 +44,7 @@ class SimulatedTransport extends TransportListener {
     }
 
     static List<Coordinate> pathFromLoop(List<String> addressLoop) throws IOException {
+        log.info(String.format("Creating loop from %d addresses: %s", addressLoop.size(), addressLoop));
         List<Coordinate> path = new ArrayList<>();
         for (int i = 0; i < addressLoop.size(); i++) {
             Directions d = getDirections(addressLoop.get(i), addressLoop.get((i + 1) % addressLoop.size()));
@@ -62,6 +64,10 @@ class SimulatedTransport extends TransportListener {
         return this.current;
     }
 
+    List<Coordinate> all() {
+        return this.path;
+    }
+
     void addTransport(Transport transport) {
         this.transport = transport;
     }
@@ -77,6 +83,7 @@ class SimulatedTransport extends TransportListener {
                 + end
                 + "&key="
                 + gmapsApiKey;
+        log.info(String.format("Requesting directions from url: %s", url));
         Request request = new Request.Builder()
                 .url(url)
                 .build();

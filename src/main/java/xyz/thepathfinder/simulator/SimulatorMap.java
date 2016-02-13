@@ -12,18 +12,33 @@ import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.PropertiesConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import xyz.thepathfinder.android.Pathfinder;
 import xyz.thepathfinder.gmaps.Coordinate;
 
-import java.util.Arrays;
+import java.util.List;
+
+import static java.util.stream.Collectors.toList;
 
 public class SimulatorMap extends Application implements MapComponentInitializedListener {
     private static final Logger log = LoggerFactory.getLogger(SimulatorMap.class);
-    private static final String a = "5500 Wabash Ave, Terre Haute, IN 47803";
-    private static final String b = "3901 S 7th St, Terre Haute, IN 47802";
-    private static final String c = "1300-1324 N 3rd St, Terre Haute, IN 47807";
+
+    private static Configuration config;
+    private static List<String> addresses;
+    static {
+        try {
+            config = new PropertiesConfiguration("config.properties");
+            addresses = config.getList("loop.address").stream().map(Object::toString).collect(toList());
+            log.info("Loop is " + addresses);
+        } catch (ConfigurationException e) {
+            e.printStackTrace();
+            log.error("Failed to load config.properties");
+        }
+    }
 
     private Pathfinder pf;
     private SimulatedTransport simulatedTransport;
@@ -32,14 +47,13 @@ public class SimulatorMap extends Application implements MapComponentInitialized
     GoogleMap map;
 
     @Override public void start(Stage stage) throws Exception {
-
         mapView = new GoogleMapView();
         mapView.addMapInializedListener(this);
         Scene scene = new Scene(mapView);
         stage.setTitle("Google Maps");
         stage.setScene(scene);
         stage.show();
-        simulatedTransport = SimulatedTransport.create(Arrays.asList(a, b, c));
+        simulatedTransport = SimulatedTransport.create(addresses);
         /*
         pf = new Pathfinder("9869bd06-12ec-451f-8207-2c5f217eb4d0", "abc");
         pf.connect();
@@ -55,14 +69,13 @@ public class SimulatorMap extends Application implements MapComponentInitialized
         c.createTransport("", path.get(0).lat, path.get(0).lng, TransportStatus.OFFLINE, new JsonObject());
         */
         Timeline timeline = new Timeline(new KeyFrame(Duration.millis(100), new EventHandler<ActionEvent>() {
-            int i = 0;
             Marker m;
             @Override public void handle(ActionEvent event) {
                 if (m != null) {
                     map.removeMarker(m);
                 }
                 if (map != null) {
-                    m = addMarker(i++);
+                    m = addMarker(simulatedTransport.next());
                 }
             }
         }));
@@ -85,11 +98,10 @@ public class SimulatorMap extends Application implements MapComponentInitialized
         map = mapView.createMap(mapOptions);
     }
 
-    private Marker addMarker(int index) {
-        Coordinate c = simulatedTransport.next();
+    private Marker addMarker(Coordinate c) {
         MarkerOptions markerOptions = new MarkerOptions();
         markerOptions.position(new LatLong(c.lat, c.lng))
-            .visible(Boolean.TRUE);
+                .visible(Boolean.TRUE);
         Marker marker = new Marker(markerOptions);
         map.addMarker(marker);
         return marker;
