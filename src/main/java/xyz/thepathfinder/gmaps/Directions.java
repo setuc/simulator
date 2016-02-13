@@ -9,4 +9,8 @@ public class Directions {
     public List<GeocodedWaypoint> geocodedWaypoints;
     public List<Route> routes;
     public String status;
+
+    public List<Coordinate> coordinates() {
+        return this.routes.get(0).overviewPolyline.coordinates();
+    }
 }

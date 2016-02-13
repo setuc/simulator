@@ -1,14 +1,9 @@
 package xyz.thepathfinder.simulator;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import com.google.gson.Gson;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
-import com.squareup.okhttp.ResponseBody;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import xyz.thepathfinder.android.Action;
@@ -18,6 +13,10 @@ import xyz.thepathfinder.android.TransportListener;
 import xyz.thepathfinder.gmaps.Coordinate;
 import xyz.thepathfinder.gmaps.Directions;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 import static xyz.thepathfinder.gmaps.Coordinate.distance;
 import static xyz.thepathfinder.gmaps.Coordinate.moveTowards;
 
@@ -26,16 +25,18 @@ class SimulatedTransport extends TransportListener {
     private static final String gmapsApiKey = "AIzaSyAc73g_Rp73AdJQKRDgaI1ErvewEwbizP8";
     private static final Gson gson = new Gson();
     private static final OkHttpClient client = new OkHttpClient();
-    private static final double DELTA = 0.001;
-    private final List<Coordinate> path;
-    private List<Action> actions;
+    private static final double EPSILON = 0.001;    // Pickup/dropoff distance
+    private static final double DELTA = 0.001;      // Movement distance
+    private final List<Coordinate> loopPath;
+    private List<Coordinate> actionPath = new ArrayList<>();
+    private List<Action> actions = new ArrayList<>();
     private Coordinate current;
     private int nextIndex;
     private Transport transport;
 
-    private SimulatedTransport(List<String> addressLoop, List<Coordinate> path) {
-        this.path = path;
-        this.current = path.get(0);
+    private SimulatedTransport(List<String> addressLoop, List<Coordinate> loopPath) {
+        this.loopPath = loopPath;
+        this.current = loopPath.get(0);
         nextIndex = 1;
     }
 
@@ -48,24 +49,20 @@ class SimulatedTransport extends TransportListener {
         List<Coordinate> path = new ArrayList<>();
         for (int i = 0; i < addressLoop.size(); i++) {
             Directions d = getDirections(addressLoop.get(i), addressLoop.get((i + 1) % addressLoop.size()));
-            path.addAll(d.routes.get(0).overviewPolyline.coordinates());
+            path.addAll(d.coordinates());
         }
         return path;
     }
 
     Coordinate start() {
-        return this.path.get(0);
+        return this.loopPath.get(0);
     }
 
-    Coordinate next() {
-        //if (transport == null) return start();
+    Coordinate next() throws IOException {
         move(DELTA);
-        //notifyPathfinder();
+        // TODO: Notify Pathfinder of location. Currently blocked by Pathfinder connection failing.
+        // if (transport == null) notifyPathfinder();
         return this.current;
-    }
-
-    List<Coordinate> all() {
-        return this.path;
     }
 
     void addTransport(Transport transport) {
@@ -77,12 +74,22 @@ class SimulatedTransport extends TransportListener {
     }
 
     private static Directions getDirections(String start, String end) throws IOException {
-        String url = "https://maps.googleapis.com/maps/api/directions/json?origin="
-                + start
-                + "&destination="
-                + end
-                + "&key="
-                + gmapsApiKey;
+        String url = "https://maps.googleapis.com/maps/api/directions/json"
+                + "?origin=" + start
+                + "&destination=" + end
+                + "&key=" + gmapsApiKey;
+        return getDirections(url);
+    }
+
+    private static Directions getDirections(Coordinate start, Coordinate end) throws IOException {
+        String url = "https://maps.googleapis.com/maps/api/directions/json"
+                + "?origin=" + start.lat + "," + start.lng
+                + "&destination=" + end.lat + "," + end.lng
+                + "&key=" + gmapsApiKey;
+        return getDirections(url);
+    }
+
+    private static Directions getDirections(String url) throws IOException {
         log.info(String.format("Requesting directions from url: %s", url));
         Request request = new Request.Builder()
                 .url(url)
@@ -91,8 +98,25 @@ class SimulatedTransport extends TransportListener {
         return gson.fromJson(response.body().charStream(), Directions.class);
     }
 
-    private void move(double delta) {
+    private void move(double delta) throws IOException {
         if (delta < 0) return;
+        List<Coordinate> path;
+        if (actionPath.isEmpty()) {   // No Pathfinder actions and currently on loop.
+            path = loopPath;
+        } else if (actions.isEmpty()){   // No Pathfinder actions, returning to loop.
+            path = actionPath;
+        } else {
+            if (distance(current, coordinate(actions.get(0))) < EPSILON) {
+                // TODO: Update Pathfinder somehow? The SDK does not seem to support this?
+                actions.remove(0);
+                if (actions.isEmpty()) {                    // Completed all Pathfinder actions, returning to loop.
+                    actionPath = getDirections(current, start()).coordinates();
+                } else {
+                    actionPath = getDirections(current, coordinate(actions.get(0))).coordinates();
+                }
+            }
+            path = actionPath;
+        }
         double distanceToNext = distance(current, path.get(nextIndex));
         if (distanceToNext > delta) {
             current = moveTowards(path.get(nextIndex), current, delta);
@@ -103,9 +127,19 @@ class SimulatedTransport extends TransportListener {
         }
     }
 
+    private static Coordinate coordinate(Action a) {
+        return new Coordinate(a.getLatitude(), a.getLongitude());
+    }
+
     @Override
     public void routed(Route route) {
         log.info(String.format("Received new route: {}", route));
-        route.getActions();
+        actions = route.getActions();
+        try {
+            actionPath = getDirections(current, coordinate(actions.get(0))).coordinates();
+        } catch (IOException e) {
+            log.error("Oops, I failed to get GMaps directions");
+            e.printStackTrace();
+        }
     }
 }

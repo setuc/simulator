@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import xyz.thepathfinder.android.Pathfinder;
 import xyz.thepathfinder.gmaps.Coordinate;
 
+import java.io.IOException;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
@@ -75,7 +76,12 @@ public class SimulatorMap extends Application implements MapComponentInitialized
                     map.removeMarker(m);
                 }
                 if (map != null) {
-                    m = addMarker(simulatedTransport.next());
+                    try {
+                        m = addMarker(simulatedTransport.next());
+                    } catch (IOException e) {
+                        log.error("Oops, I failed to get the next simulated transport coordinate");
+                        e.printStackTrace();
+                    }
                 }
             }
         }));
@@ -84,7 +90,13 @@ public class SimulatorMap extends Application implements MapComponentInitialized
     }
 
     public void mapInitialized() {
-        Coordinate start = simulatedTransport.next();
+        Coordinate start = null;
+        try {
+            start = simulatedTransport.next();
+        } catch (IOException e) {
+            log.error("Oops, I failed to get the next simulated transport coordinate");
+            e.printStackTrace();
+        }
         MapOptions mapOptions = new MapOptions();
         mapOptions.center(new LatLong(start.lat, start.lng))
             .mapType(MapTypeIdEnum.ROADMAP)
