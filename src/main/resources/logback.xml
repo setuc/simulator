@@ -6,11 +6,12 @@
         </encoder>
     </appender>
 
-    <logger name="xyz.thepathfinder.android.*" level="warn">
+    <logger name="xyz.thepathfinder.android" level="warn" additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>
 
-    <root level="INFO">
+    <logger name="xyz.thepathfinder.simulator" level="info" additivity="false">
         <appender-ref ref="STDOUT" />
-    </root>
-</configuration>
+    </logger>
+</configuration>
+
