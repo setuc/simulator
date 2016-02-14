@@ -6,12 +6,20 @@
         </encoder>
     </appender>
 
-    <logger name="xyz.thepathfinder.android" level="warn" additivity="false">
-        <appender-ref ref="STDOUT" />
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>log/debug.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%d{HH:mm:ss} [%thread] %-5level %logger{5} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="xyz.thepathfinder.android" level="info" additivity="false">
+        <appender-ref ref="FILE" />
     </logger>
 
     <logger name="xyz.thepathfinder.simulator" level="info" additivity="false">
         <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
     </logger>
-</configuration>
-
+</configuration>
