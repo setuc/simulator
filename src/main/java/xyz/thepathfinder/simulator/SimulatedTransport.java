@@ -1,7 +1,5 @@
 package xyz.thepathfinder.simulator;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
@@ -15,7 +13,6 @@ import xyz.thepathfinder.gmaps.Directions;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import static xyz.thepathfinder.gmaps.Coordinate.distance;
 import static xyz.thepathfinder.gmaps.Coordinate.moveTowards;
