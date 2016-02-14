@@ -1,5 +1,6 @@
 package xyz.thepathfinder.simulator;
 
+import com.google.gson.JsonObject;
 import com.lynden.gmapsfx.GoogleMapView;
 import com.lynden.gmapsfx.MapComponentInitializedListener;
 import com.lynden.gmapsfx.javascript.object.*;
@@ -17,7 +18,11 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import xyz.thepathfinder.android.Cluster;
+import xyz.thepathfinder.android.ClusterListener;
 import xyz.thepathfinder.android.Pathfinder;
+import xyz.thepathfinder.android.Transport;
+import xyz.thepathfinder.android.TransportStatus;
 import xyz.thepathfinder.gmaps.Coordinate;
 
 import java.io.IOException;
@@ -55,21 +60,27 @@ public class SimulatorMap extends Application implements MapComponentInitialized
         stage.setScene(scene);
         stage.show();
         simulatedTransport = SimulatedTransport.create(addresses);
-        /*
-        pf = new Pathfinder("9869bd06-12ec-451f-8207-2c5f217eb4d0", "abc");
-        pf.connect();
+
+        pf = Pathfinder.create("9869bd06-12ec-451f-8207-2c5f217eb4d0");
         Cluster c = pf.getCluster("/root/midwest/th");
         c.addListener(new ClusterListener() {
+            @Override
+            public void updated(Cluster c) {
+                log.info("Cluster was updated");
+            }
+            @Override
             public void transportAdded(Transport transport) {
-                log.info("Transport was created in Pathfinder");
+                log.info("Transport was created in Pathfinder: " + transport);
+                transport.routeSubscribe();
                 simulatedTransport.addTransport(transport);
                 transport.addListener(simulatedTransport);
+                c.unsubscribe();
             }
         });
         c.connect();
-        c.createTransport("", path.get(0).lat, path.get(0).lng, TransportStatus.OFFLINE, new JsonObject());
-        */
-        Timeline timeline = new Timeline(new KeyFrame(Duration.millis(100), new EventHandler<ActionEvent>() {
+        c.createTransport(simulatedTransport.start().lat, simulatedTransport.start().lng, TransportStatus.ONLINE, new JsonObject());
+
+        Timeline timeline = new Timeline(new KeyFrame(Duration.millis(5000), new EventHandler<ActionEvent>() {
             Marker m;
             @Override public void handle(ActionEvent event) {
                 if (m != null) {

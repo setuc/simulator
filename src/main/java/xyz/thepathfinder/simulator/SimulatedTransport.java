@@ -25,14 +25,15 @@ class SimulatedTransport extends TransportListener {
     private static final String gmapsApiKey = "AIzaSyAc73g_Rp73AdJQKRDgaI1ErvewEwbizP8";
     private static final Gson gson = new Gson();
     private static final OkHttpClient client = new OkHttpClient();
-    private static final double EPSILON = 0.001;    // Pickup/dropoff distance
-    private static final double DELTA = 0.001;      // Movement distance
+    private static final double DELTA = 0.005;      // Movement distance
+    private static final double EPSILON = DELTA;    // Pickup/dropoff distance
     private final List<Coordinate> loopPath;
     private List<Coordinate> actionPath = new ArrayList<>();
     private List<Action> actions = new ArrayList<>();
     private Coordinate current;
     private int nextIndex;
-    private Transport transport;
+    private volatile Transport transport;
+    private boolean waiting = true;
 
     private SimulatedTransport(List<String> addressLoop, List<Coordinate> loopPath) {
         this.loopPath = loopPath;
@@ -59,8 +60,11 @@ class SimulatedTransport extends TransportListener {
     }
 
     Coordinate next() throws IOException {
-        move(DELTA);
-        if (transport == null) notifyPathfinder();
+        if (waiting) return this.current;
+        if (transport != null){
+            move(DELTA);
+            notifyPathfinder();
+        }
         return this.current;
     }
 
@@ -69,6 +73,7 @@ class SimulatedTransport extends TransportListener {
     }
 
     private void notifyPathfinder() {
+        log.info("Updating Pathfinder location to " + current);
         transport.updateLocation(current.lat, current.lng);
     }
 
@@ -101,21 +106,27 @@ class SimulatedTransport extends TransportListener {
         if (delta < 0) return;
         List<Coordinate> path;
         if (actionPath.isEmpty()) {   // No Pathfinder actions and currently on loop.
+            log.info("No actions, moving on loop");
             path = loopPath;
         } else if (actions.isEmpty()){   // No Pathfinder actions, returning to loop.
+            log.info("No actions, returning to loop");
             path = actionPath;
         } else {
+            log.info("Moving on action path");
             if (distance(current, coordinate(actions.get(0))) < EPSILON) {
-                // TODO: Update Pathfinder somehow? The SDK does not seem to support this?
                 Action a = actions.get(0);
-                Commodity commodity = (Commodity) a.getModel();
-                Map<ActionStatus, CommodityStatus> statusMap =
-                        ImmutableMap.of(ActionStatus.PICK_UP, CommodityStatus.PICKED_UP, ActionStatus.DROP_OFF, CommodityStatus.DROPPED_OFF);
-                commodity.updateStatus(statusMap.get(a.getStatus()));
+                Commodity commodity = a.getCommodity();
+                if (a.getStatus() == ActionStatus.PICK_UP) {
+                    commodity.updatePickedUp(transport);
+                } else if (a.getStatus() == ActionStatus.DROP_OFF) {
+                    commodity.updateDroppedOff();
+                }
                 actions.remove(0);
                 if (actions.isEmpty()) {                    // Completed all Pathfinder actions, returning to loop.
+                    log.info("Completed final action, returning to route");
                     actionPath = getDirections(current, start()).coordinates();
                 } else {
+                    log.info("Completed action, setting course towards next action");
                     actionPath = getDirections(current, coordinate(actions.get(0))).coordinates();
                 }
             }
@@ -137,10 +148,14 @@ class SimulatedTransport extends TransportListener {
 
     @Override
     public void routed(Route route) {
+        waiting = false;
         log.info(String.format("Received new route: {}", route));
         actions = route.getActions().subList(1, route.getActions().size());
         try {
-            actionPath = getDirections(current, coordinate(actions.get(0))).coordinates();
+            if (!actions.isEmpty()) {
+                actionPath = getDirections(current, coordinate(actions.get(0))).coordinates();
+                nextIndex = 1;
+            }
         } catch (IOException e) {
             log.error("Oops, I failed to get GMaps directions");
             e.printStackTrace();

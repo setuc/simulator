@@ -85,7 +85,12 @@
         <dependency>
             <groupId>xyz.thepathfinder</groupId>
             <artifactId>pathfinder-android</artifactId>
-            <version>0.0.10</version>
+            <version>0.0.13</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.tyrus.bundles</groupId>
+            <artifactId>tyrus-standalone-client</artifactId>
+            <version>1.12</version>
         </dependency>
     </dependencies>
 </project>
