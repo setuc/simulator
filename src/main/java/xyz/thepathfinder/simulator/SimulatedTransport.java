@@ -13,7 +13,9 @@ import xyz.thepathfinder.gmaps.Directions;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toList;
 import static xyz.thepathfinder.gmaps.Coordinate.distance;
 import static xyz.thepathfinder.gmaps.Coordinate.moveTowards;
 
@@ -22,8 +24,8 @@ class SimulatedTransport extends TransportListener {
     private static final String gmapsApiKey = "AIzaSyAc73g_Rp73AdJQKRDgaI1ErvewEwbizP8";
     private static final Gson gson = new Gson();
     private static final OkHttpClient client = new OkHttpClient();
-    private static final double DELTA = 0.005;      // Movement distance
-    private static final double EPSILON = DELTA;    // Pickup/dropoff distance
+    private static final double DELTA = 0.002;          // Movement distance
+    private static final double EPSILON = 2 * DELTA;    // Pickup/dropoff distance
     private final List<Coordinate> loopPath;
     private List<Coordinate> actionPath = new ArrayList<>();
     private List<Action> actions = new ArrayList<>();
@@ -102,10 +104,10 @@ class SimulatedTransport extends TransportListener {
     private void move(double delta) throws IOException {
         if (delta < 0) return;
         List<Coordinate> path;
-        if (actionPath.isEmpty()) {   // No Pathfinder actions and currently on loop.
+        if (actionPath.isEmpty()) {     // No Pathfinder actions, currently on loop.
             log.info("No actions, moving on loop");
             path = loopPath;
-        } else if (actions.isEmpty()){   // No Pathfinder actions, returning to loop.
+        } else if (actions.isEmpty()){  // No Pathfinder actions, returning to loop.
             log.info("No actions, returning to loop");
             path = actionPath;
         } else {
@@ -126,6 +128,7 @@ class SimulatedTransport extends TransportListener {
                     log.info("Completed action, setting course towards next action");
                     actionPath = getDirections(current, coordinate(actions.get(0))).coordinates();
                 }
+                nextIndex = 1;
             }
             path = actionPath;
         }
@@ -146,12 +149,16 @@ class SimulatedTransport extends TransportListener {
     @Override
     public void routed(Route route) {
         waiting = false;
-        log.info(String.format("Received new route: {}", route));
-        actions = route.getActions().subList(1, route.getActions().size());
+        log.info(String.format("Received new route: {}", route.getActions()));
+        List<Action> actions = route.getActions().stream().filter(a -> a.getStatus() != ActionStatus.START).collect(toList());
         try {
-            if (!actions.isEmpty()) {
+            if (!actions.isEmpty() && (this.actions.isEmpty() || actions.get(0).getLatitude() != this.actions.get(0).getLatitude())) {
+                log.info("Switching to new actions from Pathfinder");
+                this.actions = actions;
                 actionPath = getDirections(current, coordinate(actions.get(0))).coordinates();
                 nextIndex = 1;
+            } else {
+                log.info("Ignoring new actions from Pathfinder");
             }
         } catch (IOException e) {
             log.error("Oops, I failed to get GMaps directions");

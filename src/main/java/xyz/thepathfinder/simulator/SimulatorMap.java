@@ -63,24 +63,29 @@ public class SimulatorMap extends Application implements MapComponentInitialized
 
         pf = Pathfinder.create("9869bd06-12ec-451f-8207-2c5f217eb4d0");
         Cluster c = pf.getCluster("/root/midwest/th");
+        c.connect();
         c.addListener(new ClusterListener() {
+            boolean connected = false;
+
             @Override
-            public void updated(Cluster c) {
-                log.info("Cluster was updated");
+            public void connected(Cluster cluster) {
+                connected = true;
             }
+
             @Override
             public void transportAdded(Transport transport) {
-                log.info("Transport was created in Pathfinder: " + transport);
-                transport.routeSubscribe();
-                simulatedTransport.addTransport(transport);
-                transport.addListener(simulatedTransport);
-                c.unsubscribe();
+                if (connected) {
+                    log.info("Transport was created in Pathfinder: " + transport);
+                    transport.routeSubscribe();
+                    simulatedTransport.addTransport(transport);
+                    transport.addListener(simulatedTransport);
+                    c.unsubscribe();
+                }
             }
         });
-        c.connect();
         c.createTransport(simulatedTransport.start().lat, simulatedTransport.start().lng, TransportStatus.ONLINE, new JsonObject());
 
-        Timeline timeline = new Timeline(new KeyFrame(Duration.millis(5000), new EventHandler<ActionEvent>() {
+        Timeline timeline = new Timeline(new KeyFrame(Duration.millis(2000), new EventHandler<ActionEvent>() {
             Marker m;
             @Override public void handle(ActionEvent event) {
                 if (m != null) {
