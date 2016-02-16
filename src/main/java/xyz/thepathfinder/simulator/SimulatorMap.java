@@ -3,7 +3,15 @@ package xyz.thepathfinder.simulator;
 import com.google.gson.JsonObject;
 import com.lynden.gmapsfx.GoogleMapView;
 import com.lynden.gmapsfx.MapComponentInitializedListener;
-import com.lynden.gmapsfx.javascript.object.*;
+import com.lynden.gmapsfx.javascript.object.GoogleMap;
+import com.lynden.gmapsfx.javascript.object.LatLong;
+import com.lynden.gmapsfx.javascript.object.MVCArray;
+import com.lynden.gmapsfx.javascript.object.MapOptions;
+import com.lynden.gmapsfx.javascript.object.MapTypeIdEnum;
+import com.lynden.gmapsfx.javascript.object.Marker;
+import com.lynden.gmapsfx.javascript.object.MarkerOptions;
+import com.lynden.gmapsfx.shapes.Polyline;
+import com.lynden.gmapsfx.shapes.PolylineOptions;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -87,9 +95,14 @@ public class SimulatorMap extends Application implements MapComponentInitialized
 
         Timeline timeline = new Timeline(new KeyFrame(Duration.millis(2000), new EventHandler<ActionEvent>() {
             Marker m;
+            boolean routeDrawn = false;
             @Override public void handle(ActionEvent event) {
                 if (m != null) {
                     map.removeMarker(m);
+                }
+                if (map != null && !routeDrawn) {
+                    addLoop(simulatedTransport.loopPath());
+                    routeDrawn = true;
                 }
                 if (map != null) {
                     try {
@@ -103,6 +116,10 @@ public class SimulatorMap extends Application implements MapComponentInitialized
         }));
         timeline.setCycleCount(Animation.INDEFINITE);
         timeline.play();
+    }
+
+    @Override public void stop() {
+        simulatedTransport.stop();
     }
 
     public void mapInitialized() {
@@ -133,6 +150,14 @@ public class SimulatorMap extends Application implements MapComponentInitialized
         Marker marker = new Marker(markerOptions);
         map.addMarker(marker);
         return marker;
+    }
+
+    private void addLoop(List<Coordinate> points) {
+        MVCArray path = new MVCArray(points.stream().map(c -> new LatLong(c.lat, c.lng))
+                .collect(toList()).toArray());
+        PolylineOptions polylineOptions = new PolylineOptions()
+                .path(path);
+        map.addMapShape(new Polyline(polylineOptions));
     }
 
     public static void main(String args[]) {

@@ -67,6 +67,17 @@ class SimulatedTransport extends TransportListener {
         return this.current;
     }
 
+    List<Coordinate> loopPath() {
+        return this.loopPath;
+    }
+
+    void stop() {
+        if (transport != null) {
+            log.info("Taking transport offline");
+            transport.updateStatus(TransportStatus.OFFLINE);
+        }
+    }
+
     void addTransport(Transport transport) {
         this.transport = transport;
     }
