@@ -112,7 +112,7 @@ class SimulatedTransport extends TransportListener {
         return gson.fromJson(response.body().charStream(), Directions.class);
     }
 
-    private void move(double delta) throws IOException {
+    private synchronized void move(double delta) throws IOException {
         if (delta < 0) return;
         List<Coordinate> path;
         if (actionPath.isEmpty()) {     // No Pathfinder actions, currently on loop.
@@ -145,11 +145,11 @@ class SimulatedTransport extends TransportListener {
         }
         double distanceToNext = distance(current, path.get(nextIndex));
         if (distanceToNext > delta) {
-            current = moveTowards(path.get(nextIndex), current, delta);
+            current = moveTowards(path.get(nextIndex), current, delta / 2);
         } else {
             current = path.get(nextIndex);
             nextIndex = (nextIndex + 1) % path.size();
-            move(delta - distanceToNext);
+            //move(delta - distanceToNext);
         }
     }
 
@@ -169,7 +169,8 @@ class SimulatedTransport extends TransportListener {
                 actionPath = getDirections(current, coordinate(actions.get(0))).coordinates();
                 nextIndex = 1;
             } else {
-                log.info("Ignoring new actions from Pathfinder");
+                this.actions = actions;
+                log.info("Using new actions from Pathfinder without asking for directions");
             }
         } catch (IOException e) {
             log.error("Oops, I failed to get GMaps directions");
