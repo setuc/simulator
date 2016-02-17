@@ -44,6 +44,7 @@ public class SimulatorMap extends Application implements MapComponentInitialized
     private static final Configuration config;
     private static final String clusterId;
     private static final String applicationId;
+    private static final int mpg;
     private static final List<String> addresses;
     static {
         try {
@@ -51,6 +52,7 @@ public class SimulatorMap extends Application implements MapComponentInitialized
             addresses = config.getList("loop.address").stream().map(Object::toString).collect(toList());
             applicationId = config.getString("application_id").trim();
             clusterId = config.getString("cluster_id").trim();
+            mpg = config.getInt("mpg");
             log.info("Loop is " + addresses);
         } catch (ConfigurationException e) {
             log.error("Failed to load config.properties");
@@ -95,7 +97,9 @@ public class SimulatorMap extends Application implements MapComponentInitialized
                 }
             }
         });
-        c.createTransport(simulatedTransport.start().lat, simulatedTransport.start().lng, TransportStatus.ONLINE, new JsonObject());
+        JsonObject metadata = new JsonObject();
+        metadata.addProperty("mpg", mpg);
+        c.createTransport(simulatedTransport.start().lat, simulatedTransport.start().lng, TransportStatus.ONLINE, metadata);
 
         Timeline timeline = new Timeline(new KeyFrame(Duration.millis(2000), new EventHandler<ActionEvent>() {
             Marker m;
