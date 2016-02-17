@@ -6,14 +6,19 @@ import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import xyz.thepathfinder.android.*;
+import xyz.thepathfinder.android.Action;
+import xyz.thepathfinder.android.ActionStatus;
+import xyz.thepathfinder.android.Commodity;
+import xyz.thepathfinder.android.Route;
+import xyz.thepathfinder.android.Transport;
+import xyz.thepathfinder.android.TransportListener;
+import xyz.thepathfinder.android.TransportStatus;
 import xyz.thepathfinder.gmaps.Coordinate;
 import xyz.thepathfinder.gmaps.Directions;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 import static xyz.thepathfinder.gmaps.Coordinate.distance;
@@ -34,14 +39,14 @@ class SimulatedTransport extends TransportListener {
     private volatile Transport transport;
     private boolean waiting = true;
 
-    private SimulatedTransport(List<String> addressLoop, List<Coordinate> loopPath) {
+    private SimulatedTransport(List<Coordinate> loopPath) {
         this.loopPath = loopPath;
         this.current = loopPath.get(0);
         nextIndex = 1;
     }
 
     static SimulatedTransport create(List<String> addressLoop) throws IOException {
-        return new SimulatedTransport(addressLoop, pathFromLoop(addressLoop));
+        return new SimulatedTransport(pathFromLoop(addressLoop));
     }
 
     static List<Coordinate> pathFromLoop(List<String> addressLoop) throws IOException {
@@ -149,7 +154,6 @@ class SimulatedTransport extends TransportListener {
         } else {
             current = path.get(nextIndex);
             nextIndex = (nextIndex + 1) % path.size();
-            //move(delta - distanceToNext);
         }
     }
 

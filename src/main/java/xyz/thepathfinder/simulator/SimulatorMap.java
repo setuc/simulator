@@ -41,16 +41,20 @@ import static java.util.stream.Collectors.toList;
 public class SimulatorMap extends Application implements MapComponentInitializedListener {
     private static final Logger log = LoggerFactory.getLogger(SimulatorMap.class);
 
-    private static Configuration config;
-    private static List<String> addresses;
+    private static final Configuration config;
+    private static final String clusterId;
+    private static final String applicationId;
+    private static final List<String> addresses;
     static {
         try {
             config = new PropertiesConfiguration("config.properties");
             addresses = config.getList("loop.address").stream().map(Object::toString).collect(toList());
+            applicationId = config.getString("application_id").trim();
+            clusterId = config.getString("cluster_id").trim();
             log.info("Loop is " + addresses);
         } catch (ConfigurationException e) {
-            e.printStackTrace();
             log.error("Failed to load config.properties");
+            throw new RuntimeException(e);
         }
     }
 
@@ -69,8 +73,8 @@ public class SimulatorMap extends Application implements MapComponentInitialized
         stage.show();
         simulatedTransport = SimulatedTransport.create(addresses);
 
-        pf = Pathfinder.create("9869bd06-12ec-451f-8207-2c5f217eb4d0");
-        Cluster c = pf.getCluster("/root/midwest/th");
+        pf = Pathfinder.create(applicationId);
+        Cluster c = pf.getCluster(clusterId);
         c.connect();
         c.addListener(new ClusterListener() {
             boolean connected = false;
