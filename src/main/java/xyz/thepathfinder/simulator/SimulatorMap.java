@@ -44,6 +44,7 @@ public class SimulatorMap extends Application implements MapComponentInitialized
     private static final Configuration config;
     private static final String clusterId;
     private static final String applicationId;
+    private static final String idToken;
     private static final int mpg;
     private static final int capacity;
     private static final List<String> addresses;
@@ -52,6 +53,7 @@ public class SimulatorMap extends Application implements MapComponentInitialized
             config = new PropertiesConfiguration("config.properties");
             addresses = config.getList("loop.address").stream().map(Object::toString).collect(toList());
             applicationId = config.getString("application_id").trim();
+            idToken = config.getString("id_token").trim();
             clusterId = config.getString("cluster_id").trim();
             mpg = config.getInt("mpg");
             capacity = config.getInt("capacity");
@@ -76,33 +78,20 @@ public class SimulatorMap extends Application implements MapComponentInitialized
         stage.setScene(scene);
         stage.show();
         simulatedTransport = SimulatedTransport.create(addresses);
-
-        pf = Pathfinder.create(applicationId);
+        // Get google id token
+        pf = new Pathfinder(applicationId, idToken);
+        pf.connect();
         Cluster c = pf.getCluster(clusterId);
-        c.connect();
-        c.addListener(new ClusterListener() {
-            boolean connected = false;
-
-            @Override
-            public void connected(Cluster cluster) {
-                connected = true;
-            }
-
-            @Override
-            public void transportAdded(Transport transport) {
-                if (connected) {
-                    log.info("Transport was created in Pathfinder: " + transport);
-                    transport.routeSubscribe();
-                    simulatedTransport.addTransport(transport);
-                    transport.addListener(simulatedTransport);
-                    c.unsubscribe();
-                }
-            }
-        });
         JsonObject metadata = new JsonObject();
         metadata.addProperty("mpg", mpg);
         metadata.addProperty("chimney", capacity);
-        c.createTransport(simulatedTransport.start().lat, simulatedTransport.start().lng, TransportStatus.ONLINE, metadata);
+
+        Transport transport = c.createTransport(simulatedTransport.start().lat, simulatedTransport.start().lng, TransportStatus.ONLINE, metadata);
+        simulatedTransport = SimulatedTransport.create(addresses);
+        simulatedTransport.addTransport(transport);
+        transport.addListener(simulatedTransport);
+        transport.create();
+        transport.routeSubscribe();
 
         Timeline timeline = new Timeline(new KeyFrame(Duration.millis(2000), new EventHandler<ActionEvent>() {
             Marker m;
